@@ -1,1 +1,1 @@
-# mis-2018-touch-projector
+# mis-2018-final-project
