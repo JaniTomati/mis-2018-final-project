@@ -5,13 +5,13 @@
     android:id="@+id/layout1"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     tools:context=".MainActivity">
 
     <ImageView
         android:id="@+id/testImage"
-        android:layout_width="600dp"
-        android:layout_height="245dp" />
+        android:layout_width="500dp"
+        android:layout_height="290dp" />
 
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -19,20 +19,20 @@
         android:id="@+id/layout2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/connectBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connect" />
+        <Button
+            android:id="@+id/connectBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connect" />
 
 
-    <Button
-        android:id="@+id/qr_scan"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="SCAN" />
+        <Button
+            android:id="@+id/qr_scan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SCAN" />
     </LinearLayout>
 </LinearLayout>

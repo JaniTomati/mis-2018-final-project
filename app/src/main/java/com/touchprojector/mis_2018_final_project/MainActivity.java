@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -15,7 +16,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
@@ -30,7 +30,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private float finalY;
 
     private IntentIntegrator qrScan;
-    private String server_ip = "192.168.0.32";
+    private String server_ip = "192.168.2.115";
     private int server_port = 8090;
 
     @Override
@@ -89,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        qrScan = new IntentIntegrator(this); // scan object
+        qrScan = new IntentIntegrator(this); // initialize QR scanner
 
         // check whether camera permission is granted
         if (checkSelfPermission(Manifest.permission.CAMERA)
@@ -134,18 +133,12 @@ public class MainActivity extends AppCompatActivity {
                 //if qr contains data
                 try {
                     //converting the data to json
-                    JSONObject obj = new JSONObject(result.getContents());
-                    //setting values to textviews
-                    //server_ip = InetAddress.getByName(obj.getString("server_ip"));
+                    JSONObject obj = new JSONObject(result.getContents()); // read server_ip and server_port from scanned json
                     server_ip = obj.getString("server_ip");
                     server_port = Integer.parseInt(obj.getString("server_port"));
                 } catch (JSONException e) {
-                    e.printStackTrace();
-                    //if control comes here
-                    //that means the encoded format not matches
-                    //in this case you can display whatever data is available on the qrcode
-                    //to a toast
-                    Toast.makeText(this, result.getContents(), Toast.LENGTH_LONG).show();
+                    e.printStackTrace(); // QR code format does not match JSON
+                    Toast.makeText(this, result.getContents(), Toast.LENGTH_LONG).show(); // display content in a toast
                 }
             }
         } else {
@@ -234,28 +227,12 @@ public class MainActivity extends AppCompatActivity {
         protected Boolean doInBackground(String... params) {
             boolean result = true;
             try {
-                InetAddress serverAddr = InetAddress.getByName(params[0]);
                 socket = new Socket(server_ip, server_port); //Open socket on server IP and port
-                //String inputStream = socket.getInputStream().toString();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(context, socket.isConnected() ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
-                        try {
-                            if(socket.isConnected() && socket != null) {
-                                outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
-                                        .getOutputStream())), true); //create output stream to send data to server
-                                //outData.println("Connected to Server.");
-                            }
-                        }catch (IOException e){
-                            Log.e("remotedroid", "Error while creating OutWriter", e);
-                            Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
-                        }
-                    }
-                });
+                // try thread
+                MessageThread client_message = new MessageThread();
+                client_message.start();
 
-                
                 while(socket.isConnected()) {
                     bMap = BitmapFactory.decodeStream(socket.getInputStream());
 
@@ -266,11 +243,11 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
-                    Log.i("InputData", socket.getInputStream().toString());
+                    Log.v("InputData", socket.getInputStream().toString());
                 }
 
             } catch (IOException e) {
-                Log.e("remotedroid", "Error while connecting", e);
+                Log.e("Connection", "Error while connecting", e);
                 result = false;
             }
             return result;
@@ -280,8 +257,8 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Boolean result) {
             Log.d("OnPostExecute", "Called.");
             isConnected = result;
-            Toast.makeText(context, isConnected ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
-            try {
+            //Toast.makeText(context, isConnected ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
+            /*try {
                 if(socket.isConnected()) {
                     outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
                             .getOutputStream())), true); //create output stream to send data to server
@@ -289,6 +266,28 @@ public class MainActivity extends AppCompatActivity {
                 }
             }catch (IOException e){
                 Log.e("remotedroid", "Error while creating OutWriter", e);
+                Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
+            }*/
+        }
+    }
+
+    class MessageThread extends Thread {
+        @Override
+        public void run(){
+            Looper.prepare();
+            Looper.loop();
+
+            Toast.makeText(context, socket.isConnected() ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
+            Log.i("MessageThread", "Called.");
+
+            try {
+                if(socket.isConnected() && socket != null) {
+                    outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
+                            .getOutputStream())), true); //create output stream to send data to server
+                    //outData.println("Connected to Server.");
+                }
+            } catch (IOException e){
+                Log.e("OutWriter", "Error while creating OutWriter", e);
                 Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
             }
         }
