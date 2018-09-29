@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Looper;
+import android.os.StrictMode;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -54,13 +55,18 @@ public class MainActivity extends AppCompatActivity {
     private float finalY;
 
     private IntentIntegrator qrScan;
-    private String server_ip = "192.168.2.115";
+    private String server_ip = "192.168.0.32";
     private int server_port = 8090;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (android.os.Build.VERSION.SDK_INT > 9) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+        }
 
         context = this;
 
@@ -81,6 +87,16 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View v) {
+                if (socket != null && socket.isConnected()) {
+                    Log.i("Disconnect", "Disconnected from server!");
+                    try {
+                        socket.shutdownInput();
+                        socket.shutdownOutput();
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 qrScan.initiateScan();
                 ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
                 if (server_ip != null)
@@ -134,6 +150,8 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     //converting the data to json
                     JSONObject obj = new JSONObject(result.getContents()); // read server_ip and server_port from scanned json
+                    Log.i("ServerIP", obj.getString("server_ip"));
+                    Log.i("ServerPort", obj.getString("server_port"));
                     server_ip = obj.getString("server_ip");
                     server_port = Integer.parseInt(obj.getString("server_port"));
                 } catch (JSONException e) {
@@ -179,18 +197,30 @@ public class MainActivity extends AppCompatActivity {
 
                 if (initialX < finalX) {
                     Log.d(TOUCH_TAG, "Left to Right swipe performed");
+                    if (socket.isConnected() && outData != null) {
+                        outData.println("SwipeLeft");
+                    }
                 }
 
                 if (initialX > finalX) {
                     Log.d(TOUCH_TAG, "Right to Left swipe performed");
+                    if (socket.isConnected() && outData != null) {
+                        outData.println("SwipeRight");
+                    }
                 }
 
                 if (initialY < finalY) {
                     Log.d(TOUCH_TAG, "Up to Down swipe performed");
+                    if (socket.isConnected() && outData != null) {
+                        outData.println("SwipeUp");
+                    }
                 }
 
                 if (initialY > finalY) {
                     Log.d(TOUCH_TAG, "Down to Up swipe performed");
+                    if (socket.isConnected() && outData != null) {
+                        outData.println("SwipeDown");
+                    }
                 }
 
                 break;
@@ -209,12 +239,12 @@ public class MainActivity extends AppCompatActivity {
 
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         super.onDestroy();
-        if(socket.isConnected() /*&& outData != null*/) {
+        if(socket != null && socket.isConnected()) {
+            Log.i("Disconnect", "Disconnected from server!");
+            outData.println("exit"); //tell server to exit
             try {
-                outData.println("exit"); //tell server to exit
                 socket.close(); //close socket
             } catch (IOException e) {
                 Log.e("remotedroid", "Error in closing socket", e);
@@ -231,14 +261,17 @@ public class MainActivity extends AppCompatActivity {
 
                 // try thread
                 MessageThread client_message = new MessageThread();
+                Log.i("MessageThread", "doInBackground");
                 client_message.start();
 
                 while(socket.isConnected()) {
                     bMap = BitmapFactory.decodeStream(socket.getInputStream());
+                    Log.d("ImageData", "Receive image data.");
 
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            Log.d("ImageData", "Display image data.");
                             image.setImageBitmap(bMap);
                         }
                     });
@@ -274,22 +307,26 @@ public class MainActivity extends AppCompatActivity {
     class MessageThread extends Thread {
         @Override
         public void run(){
+            Log.i("MessageThread", "prepare");
             Looper.prepare();
-            Looper.loop();
+            Log.i("MessageThread", "prepared");
 
             Toast.makeText(context, socket.isConnected() ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
             Log.i("MessageThread", "Called.");
 
             try {
-                if(socket.isConnected() && socket != null) {
+                if(socket != null && socket.isConnected()) {
                     outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
                             .getOutputStream())), true); //create output stream to send data to server
-                    //outData.println("Connected to Server.");
+                    outData.println("Connected to Server.");
+                    Log.i("OutData", "Data " + outData.toString());
                 }
             } catch (IOException e){
                 Log.e("OutWriter", "Error while creating OutWriter", e);
                 Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
             }
+            Looper.loop();
+
         }
     }
 }
