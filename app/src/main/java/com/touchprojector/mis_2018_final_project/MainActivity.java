@@ -77,6 +77,21 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View v) {
+                // shut down old connection if it exists
+                if (socket != null && socket.isConnected()) {
+                    Log.i("Disconnect", "Disconnected from server!");
+                    try {
+                        outData.println("exit"); //tell server to exit
+                        Thread.sleep(1000);
+                        socket.shutdownInput();
+                        socket.shutdownOutput();
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
                 ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
                 connectPhoneTask.execute(server_ip); //try to connect to server in another thread
             }
@@ -111,6 +126,28 @@ public class MainActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA},
                     MY_CAMERA_REQUEST_CODE);
+        }
+    }
+
+    /**
+     * Hide Toolbars
+     * Fullscreen mode
+     * https://stackoverflow.com/questions/31482522/immersive-mode-android-studio
+     * */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+
+        if (hasFocus) {
+
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
     }
 
@@ -243,11 +280,16 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if(socket != null && socket.isConnected()) {
             Log.i("Disconnect", "Disconnected from server!");
-            outData.println("exit"); //tell server to exit
             try {
+                outData.println("exit"); //tell server to exit
+                Thread.sleep(1000);
+                socket.shutdownInput();
+                socket.shutdownOutput();
                 socket.close(); //close socket
             } catch (IOException e) {
                 Log.e("remotedroid", "Error in closing socket", e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -278,6 +320,8 @@ public class MainActivity extends AppCompatActivity {
 
                     Log.v("InputData", socket.getInputStream().toString());
                 }
+
+                Log.i("Socket", "Closing socket.");
 
             } catch (IOException e) {
                 Log.e("Connection", "Error while connecting", e);
@@ -326,7 +370,6 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
             }
             Looper.loop();
-
         }
     }
 }
