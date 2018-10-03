@@ -14,6 +14,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -49,6 +50,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageView image;
     private Bitmap bMap;
 
+    private ScaleGestureDetector mScaleGestureDetector;
+    private float mScaleFactor = 1.0f;
+
     private float initialX;
     private float initialY;
     private float finalX;
@@ -71,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
         context = this;
 
         image = (ImageView) findViewById(R.id.testImage);
+        mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         connectBtn = (Button) findViewById(R.id.connectBtn);
         connectBtn.setOnClickListener( new View.OnClickListener() {
@@ -210,6 +215,8 @@ public class MainActivity extends AppCompatActivity {
         int threshold = 200;
         int action = event.getActionMasked();
 
+        mScaleGestureDetector.onTouchEvent(event);
+
         switch (action) {
 
             case MotionEvent.ACTION_DOWN:
@@ -227,8 +234,6 @@ public class MainActivity extends AppCompatActivity {
                 finalX = event.getX();
                 finalY = event.getY();
 
-                Log.i(TOUCH_TAG, "InitialX " + initialX + " FinalX " + finalX);
-                Log.i(TOUCH_TAG, "InitialY " + initialY + " FinalY " + finalY);
                 Log.v(TOUCH_TAG, "Action was UP");
 
                 if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
@@ -263,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-
+                // send click data only if no swipe was detected
                 if (!swipe && socket.isConnected() && outData != null) {
                     outData.println("MouseClick:" + finalX + ":" + finalY);
                     Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
@@ -308,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
         protected Boolean doInBackground(String... params) {
             boolean result = true;
             try {
-                socket = new Socket(server_ip, server_port); //Open socket on server IP and port
+                socket = new Socket(server_ip, server_port); // Open socket on server IP and port
 
                 // try thread
                 MessageThread client_message = new MessageThread();
@@ -379,6 +384,21 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
             }
             Looper.loop();
+        }
+    }
+
+    /**
+     * Pinch zoom: https://medium.com/quick-code/pinch-to-zoom-with-multi-touch-gestures-in-android-d6392e4bf52d
+     */
+    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        @Override
+        public boolean onScale(ScaleGestureDetector scaleGestureDetector){
+            mScaleFactor *= scaleGestureDetector.getScaleFactor();
+            mScaleFactor = Math.max(1.0f,
+                    Math.min(mScaleFactor, 10.0f));
+            image.setScaleX(mScaleFactor);
+            image.setScaleY(mScaleFactor);
+            return true;
         }
     }
 }
