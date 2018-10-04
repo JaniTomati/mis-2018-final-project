@@ -240,47 +240,42 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.v(TOUCH_TAG, "Action was UP");
 
-                if (mScaleFactor == 1.0) {
-                    Log.d(TOUCH_TAG, "Swiping and clicking enabled.");
-
-                    if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
-                        swipe = true;
-                        Log.d(TOUCH_TAG, "Left to Right swipe performed");
-                        if (socket.isConnected() && outData != null) {
-                            outData.println("SwipeLeft");
-                        }
+                if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
+                    swipe = true;
+                    Log.d(TOUCH_TAG, "Left to Right swipe performed");
+                    if (socket != null && socket.isConnected() && outData != null) {
+                        outData.println("SwipeLeft");
                     }
+                }
 
-                    if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
-                        swipe = true;
-                        Log.d(TOUCH_TAG, "Right to Left swipe performed");
-                        if (socket.isConnected() && outData != null) {
-                            outData.println("SwipeRight");
-                        }
+                if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
+                    swipe = true;
+                    Log.d(TOUCH_TAG, "Right to Left swipe performed");
+                    if (socket != null && socket.isConnected() && outData != null) {
+                        outData.println("SwipeRight");
                     }
+                }
 
-                    if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
-                        swipe = true;
-                        Log.d(TOUCH_TAG, "Up to Down swipe performed");
-                        if (socket.isConnected() && outData != null) {
-                            outData.println("SwipeUp");
-                        }
+                if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
+                    swipe = true;
+                    Log.d(TOUCH_TAG, "Up to Down swipe performed");
+                    if (socket != null && socket.isConnected() && outData != null) {
+                        outData.println("SwipeUp");
                     }
+                }
 
-                    if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
-                        swipe = true;
-                        Log.d(TOUCH_TAG, "Down to Up swipe performed");
-                        if (socket.isConnected() && outData != null) {
-                            outData.println("SwipeDown");
-                        }
+                if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
+                    swipe = true;
+                    Log.d(TOUCH_TAG, "Down to Up swipe performed");
+                    if (socket != null && socket.isConnected() && outData != null) {
+                        outData.println("SwipeDown");
                     }
+                }
 
-                    // send click data only if no swipe was detected
-                    if (!swipe && socket.isConnected() && outData != null) {
-                        outData.println("MouseClick:" + finalX + ":" + finalY);
-                        Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
-                    }
-
+                // send click data only if no swipe was detected
+                if (!swipe && socket != null && socket.isConnected() && outData != null) {
+                    outData.println("MouseClick:" + finalX + ":" + finalY);
+                    Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
                 }
 
                 break;
@@ -337,7 +332,11 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             Log.d("ImageData", "Display image data.");
+                            // https://github.com/chrisbanes/PhotoView/issues/505
+                            Matrix matrix = new Matrix();
+                            image.getAttacher().getSuppMatrix(matrix);
                             image.setImageBitmap(bMap);
+                            image.getAttacher().setDisplayMatrix(matrix);
                         }
                     });
 
