@@ -22,6 +22,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.github.chrisbanes.photoview.PhotoView;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private Button scanBtn;
 
     private PrintWriter outData;
-    private ImageView image;
+    private PhotoView image;
     private Bitmap bMap;
 
     private ScaleGestureDetector mScaleGestureDetector;
@@ -78,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
 
         context = this;
 
-        image = (ImageView) findViewById(R.id.testImage);
+        image = (PhotoView) findViewById(R.id.photoView);
         mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         connectBtn = (Button) findViewById(R.id.connectBtn);
@@ -219,8 +220,6 @@ public class MainActivity extends AppCompatActivity {
         int threshold = 200;
         int action = event.getActionMasked();
 
-        mScaleGestureDetector.onTouchEvent(event);
-
         switch (action) {
 
             case MotionEvent.ACTION_DOWN:
@@ -231,13 +230,6 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case MotionEvent.ACTION_MOVE:
-                if (mScaleFactor > 1.0) {
-                    mTranslateX = event.getX() - initialX;
-                    mTranslateY = event.getY() - initialY;
-
-                    image.setTranslationX(mTranslateX / mScaleFactor);
-                    image.setTranslationY(mTranslateY / mScaleFactor);
-                }
 
                 Log.v(TOUCH_TAG, "Action was MOVE");
                 break;

@@ -7,8 +7,8 @@
     android:orientation="horizontal"
     tools:context=".MainActivity">
 
-    <ImageView
-        android:id="@+id/testImage"
+    <com.github.chrisbanes.photoview.PhotoView
+        android:id="@+id/photoView"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:contentDescription="Screen" />
@@ -18,7 +18,7 @@
         android:id="@+id/layout2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentEnd="@+id/testImage"
+        android:layout_alignParentEnd="@+id/photoView"
         android:orientation="vertical"
         tools:context=".MainActivity">
 
