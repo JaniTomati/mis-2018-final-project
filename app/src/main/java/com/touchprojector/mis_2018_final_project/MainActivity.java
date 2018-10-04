@@ -22,7 +22,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.github.chrisbanes.photoview.OnViewTapListener;
 import com.github.chrisbanes.photoview.PhotoView;
+import com.github.chrisbanes.photoview.PhotoViewAttacher;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
     private PrintWriter outData;
     private PhotoView image;
+    private PhotoViewAttacher mAttacher;
     private Bitmap bMap;
 
     private ScaleGestureDetector mScaleGestureDetector;
@@ -80,6 +83,25 @@ public class MainActivity extends AppCompatActivity {
         context = this;
 
         image = (PhotoView) findViewById(R.id.photoView);
+        mAttacher = new PhotoViewAttacher(image);
+        mAttacher.setOnClickListener(new View.OnClickListener() {
+                                         @Override
+                                         public void onClick(View view) {
+
+                                         }
+                                     });
+                mAttacher.setOnViewTapListener(new OnViewTapListener() {
+                    @Override
+                    public void onViewTap(View view, float x, float y) {
+                        Log.d("onViewTap", "x: " + x + " y: " + y);
+
+                        float displayWidth = image.getDisplayRect().top;
+                        float displayHeight = image.getDisplayRect().left;
+
+                        Log.d("onViewTap", "Width: " + displayWidth + " Height: " + displayHeight);
+                    }
+                });
+
         mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         connectBtn = (Button) findViewById(R.id.connectBtn);
