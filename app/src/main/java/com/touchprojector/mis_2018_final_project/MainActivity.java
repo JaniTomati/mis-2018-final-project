@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.PointF;
 import android.os.AsyncTask;
 import android.os.Looper;
 import android.os.StrictMode;
@@ -57,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     private float initialY;
     private float finalX;
     private float finalY;
+    private float mTranslateX;
+    private float mTranslateY;
 
     private IntentIntegrator qrScan;
     private String server_ip = "192.168.0.32";
@@ -227,6 +231,14 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case MotionEvent.ACTION_MOVE:
+                if (mScaleFactor > 1.0) {
+                    mTranslateX = event.getX() - initialX;
+                    mTranslateY = event.getY() - initialY;
+
+                    image.setTranslationX(mTranslateX / mScaleFactor);
+                    image.setTranslationY(mTranslateY / mScaleFactor);
+                }
+
                 Log.v(TOUCH_TAG, "Action was MOVE");
                 break;
 
@@ -236,42 +248,47 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.v(TOUCH_TAG, "Action was UP");
 
-                if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Left to Right swipe performed");
-                    if (socket.isConnected() && outData != null) {
-                        outData.println("SwipeLeft");
-                    }
-                }
+                if (mScaleFactor == 1.0) {
+                    Log.d(TOUCH_TAG, "Swiping and clicking enabled.");
 
-                if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Right to Left swipe performed");
-                    if (socket.isConnected() && outData != null) {
-                        outData.println("SwipeRight");
+                    if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Left to Right swipe performed");
+                        if (socket.isConnected() && outData != null) {
+                            outData.println("SwipeLeft");
+                        }
                     }
-                }
 
-                if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Up to Down swipe performed");
-                    if (socket.isConnected() && outData != null) {
-                        outData.println("SwipeUp");
+                    if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Right to Left swipe performed");
+                        if (socket.isConnected() && outData != null) {
+                            outData.println("SwipeRight");
+                        }
                     }
-                }
 
-                if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Down to Up swipe performed");
-                    if (socket.isConnected() && outData != null) {
-                        outData.println("SwipeDown");
+                    if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Up to Down swipe performed");
+                        if (socket.isConnected() && outData != null) {
+                            outData.println("SwipeUp");
+                        }
                     }
-                }
 
-                // send click data only if no swipe was detected
-                if (!swipe && socket.isConnected() && outData != null) {
-                    outData.println("MouseClick:" + finalX + ":" + finalY);
-                    Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
+                    if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Down to Up swipe performed");
+                        if (socket.isConnected() && outData != null) {
+                            outData.println("SwipeDown");
+                        }
+                    }
+
+                    // send click data only if no swipe was detected
+                    if (!swipe && socket.isConnected() && outData != null) {
+                        outData.println("MouseClick:" + finalX + ":" + finalY);
+                        Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
+                    }
+
                 }
 
                 break;
@@ -392,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
-        public boolean onScale(ScaleGestureDetector scaleGestureDetector){
+        public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
             mScaleFactor *= scaleGestureDetector.getScaleFactor();
             mScaleFactor = Math.max(1.0f,
                     Math.min(mScaleFactor, 10.0f));
