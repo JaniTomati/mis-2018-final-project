@@ -22,9 +22,10 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.github.chrisbanes.photoview.OnViewTapListener;
-import com.github.chrisbanes.photoview.PhotoView;
-import com.github.chrisbanes.photoview.PhotoViewAttacher;
+// import com.github.chrisbanes.photoview.OnViewDragListener;
+// import com.github.chrisbanes.photoview.OnViewTapListener;
+// import com.github.chrisbanes.photoview.PhotoView;
+// import com.github.chrisbanes.photoview.PhotoViewAttacher;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -35,26 +36,29 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.Socket;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int MY_CAMERA_REQUEST_CODE = 100;
     private static final String TOUCH_TAG = "TouchEvent";
+    private static final String CONNECTION_TAG = "Connection";
+    private static final String IMAGE_DATA_TAG = "ImageData";
+    private static final String SERVER_COMMUNICTION_TAG = "ClientServerCommunication";
 
     Context context;
 
-    private boolean isConnected = false;
-    private boolean mouseMoved = false;
     private Socket socket;
     private Button connectBtn;
     private Button scanBtn;
 
     private PrintWriter outData;
-    private PhotoView image;
-    private PhotoViewAttacher mAttacher;
+    private ImageView image;
     private Bitmap bMap;
+
+//    // PHOTOVIEW
+//    private PhotoView image;
+//    private PhotoViewAttacher mAttacher;
 
     private ScaleGestureDetector mScaleGestureDetector;
     private float mScaleFactor = 1.0f;
@@ -63,8 +67,11 @@ public class MainActivity extends AppCompatActivity {
     private float initialY;
     private float finalX;
     private float finalY;
+
     private float mTranslateX;
     private float mTranslateY;
+    private float mMinZoomFactor = 1.0f;
+    private float mMaxZoomFactor = 5.0f;
 
     private IntentIntegrator qrScan;
     private String server_ip = "192.168.0.32";
@@ -81,27 +88,68 @@ public class MainActivity extends AppCompatActivity {
         }
 
         context = this;
+        image = (ImageView) findViewById(R.id.imageView);
 
-        image = (PhotoView) findViewById(R.id.photoView);
-        mAttacher = new PhotoViewAttacher(image);
-        mAttacher.setOnClickListener(new View.OnClickListener() {
-                                         @Override
-                                         public void onClick(View view) {
+//        // PHOTOVIEW: Extension of ImageView Class. Allows zooming and panning.
+//        // Creates complications with other functionalities
+//        image = (PhotoView) findViewById(R.id.imageView);
+//        mAttacher = new PhotoViewAttacher(image);
 
-                                         }
-                                     });
-                mAttacher.setOnViewTapListener(new OnViewTapListener() {
-                    @Override
-                    public void onViewTap(View view, float x, float y) {
-                        Log.d("onViewTap", "x: " + x + " y: " + y);
+//        // PHOTOVIEW: OnViewTapListener messes with panning and zoom while zoomed in!
+//        // Clicking while zoomed in not possible!
+//        mAttacher.setOnViewTapListener(new OnViewTapListener() {
+//            @Override
+//            public void onViewTap(View view, float x, float y) {
+//                Log.d(TOUCH_TAG, "x: " + x + " y: " + y);
+//
+//                float displayWidth = image.getDisplayRect().top;
+//                float displayHeight = image.getDisplayRect().left;
+//
+//                if (socket != null && socket.isConnected() && outData != null) {
+//                    outData.println("MouseClick:" + finalX + ":" + finalY);
+//                    Log.v(TOUCH_TAG, "MouseClick: " + finalX + " " + finalY);
+//                }
+//            }
+//        });
 
-                        float displayWidth = image.getDisplayRect().top;
-                        float displayHeight = image.getDisplayRect().left;
+//        // PHOTOVIEW: Drag sends data multiple times while the finger is touching the display
+//        // No way to detect when finger is touching the display / lifted
+//        mAttacher.setOnViewDragListener(new OnViewDragListener() {
+//            @Override
+//            public void onDrag(float dx, float dy) {
+//                float threshold = 35.0f;
+//
+//                if (dx > 0 && Math.abs(dx) > threshold) {
+//                    Log.d(TOUCH_TAG, "Left to Right swipe performed");
+//                    if (socket != null && socket.isConnected() && outData != null) {
+//                        outData.println("SwipeLeft");
+//                    }
+//                }
+//
+//                if (dx > 0 && Math.abs(dx) > threshold) {
+//                    Log.d(TOUCH_TAG, "Right to Left swipe performed");
+//                    if (socket != null && socket.isConnected() && outData != null) {
+//                        outData.println("SwipeRight");
+//                    }
+//                }
+//
+//                if (dy > 0 && Math.abs(dy) > threshold) {
+//                    Log.d(TOUCH_TAG, "Up to Down swipe performed");
+//                    if (socket != null && socket.isConnected() && outData != null) {
+//                        outData.println("SwipeUp");
+//                    }
+//                }
+//
+//                if (dy < 0 && Math.abs(dy) > threshold) {
+//                    Log.d(TOUCH_TAG, "Down to Up swipe performed");
+//                    if (socket != null && socket.isConnected() && outData != null) {
+//                        outData.println("SwipeDown");
+//                    }
+//                }
+//            }
+//        });
 
-                        Log.d("onViewTap", "Width: " + displayWidth + " Height: " + displayHeight);
-                    }
-                });
-
+        // used for pinch zoom
         mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         connectBtn = (Button) findViewById(R.id.connectBtn);
@@ -111,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 // shut down old connection if it exists
                 if (socket != null && socket.isConnected()) {
-                    Log.i("Disconnect", "Disconnected from server!");
+                    Log.i(CONNECTION_TAG, "Disconnected from server!");
                     try {
                         outData.println("exit"); //tell server to exit
                         Thread.sleep(1000);
@@ -125,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
-                connectPhoneTask.execute(server_ip); //try to connect to server in another thread
+                connectPhoneTask.execute(server_ip); // try to connect to server in another thread
             }
         });
 
@@ -135,12 +183,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (socket != null && socket.isConnected()) {
-                    Log.i("Disconnect", "Disconnected from server!");
+                    Log.i(CONNECTION_TAG, "Disconnected from server!");
                     try {
+                        outData.println("exit"); // tell server to exit
+                        Thread.sleep(1000);
                         socket.shutdownInput();
                         socket.shutdownOutput();
                         socket.close();
                     } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
@@ -206,21 +258,22 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      *  https://www.simplifiedcoding.net/android-qr-code-scanner-tutorial/
+     *  Get the data from the QR-Code
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (result != null) {
-            //if qrcode has nothing in it
+            // if QR-Code is empty
             if (result.getContents() == null) {
                 Toast.makeText(this, "Result Not Found", Toast.LENGTH_LONG).show();
             } else {
-                //if qr contains data
+                // if QR-Code contains data
                 try {
-                    //converting the data to json
+                    // converting the data to json
                     JSONObject obj = new JSONObject(result.getContents()); // read server_ip and server_port from scanned json
-                    Log.i("ServerIP", obj.getString("server_ip"));
-                    Log.i("ServerPort", obj.getString("server_port"));
+                    Log.i(SERVER_COMMUNICTION_TAG, "ServerIP: " + obj.getString("server_ip"));
+                    Log.i(SERVER_COMMUNICTION_TAG, "ServerPort: " +obj.getString("server_port"));
                     server_ip = obj.getString("server_ip");
                     server_port = Integer.parseInt(obj.getString("server_port"));
                 } catch (JSONException e) {
@@ -235,12 +288,15 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * http://codetheory.in/android-ontouchevent-ontouchlistener-motionevent-to-detect-common-gestures/
+     * Detect swipe and click gestures
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         boolean swipe = false; // if swipe was performed
         int threshold = 200;
         int action = event.getActionMasked();
+
+        mScaleGestureDetector.onTouchEvent(event);
 
         switch (action) {
 
@@ -253,6 +309,16 @@ public class MainActivity extends AppCompatActivity {
 
             case MotionEvent.ACTION_MOVE:
 
+                // panning interferes with swipes
+                // problematic when zooming out since the picture does center itself
+                if (mScaleFactor != 1.0) {
+                    mTranslateX = event.getX() - initialX;
+                    mTranslateY = event.getY() - initialY;
+
+                    image.setTranslationX(mTranslateX / mScaleFactor);
+                    image.setTranslationY(mTranslateY / mScaleFactor);
+                }
+
                 Log.v(TOUCH_TAG, "Action was MOVE");
                 break;
 
@@ -262,43 +328,47 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.v(TOUCH_TAG, "Action was UP");
 
-                if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Left to Right swipe performed");
-                    if (socket != null && socket.isConnected() && outData != null) {
-                        outData.println("SwipeLeft");
+                // only while not zoomed out!
+                if (mScaleFactor ==  1.0) {
+                    if (initialX < finalX && Math.abs(finalX - initialX) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Left to Right swipe performed");
+                        if (socket != null && socket.isConnected() && outData != null) {
+                            outData.println("SwipeLeft");
+                        }
+                    }
+
+                    else if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Right to Left swipe performed");
+                        if (socket != null && socket.isConnected() && outData != null) {
+                            outData.println("SwipeRight");
+                        }
+                    }
+
+                    else if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Up to Down swipe performed");
+                        if (socket != null && socket.isConnected() && outData != null) {
+                            outData.println("SwipeUp");
+                        }
+                    }
+
+                    else if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
+                        swipe = true;
+                        Log.d(TOUCH_TAG, "Down to Up swipe performed");
+                        if (socket != null && socket.isConnected() && outData != null) {
+                            outData.println("SwipeDown");
+                        }
+                    }
+
+                    // send click data only if no swipe was detected
+                    if (!swipe && socket != null && socket.isConnected() && outData != null) {
+                        outData.println("MouseClick:" + finalX + ":" + finalY);
+                        Log.v(TOUCH_TAG, "MouseClick: " + finalX / mScaleFactor + " " + finalY / mScaleFactor);
                     }
                 }
 
-                if (initialX > finalX && Math.abs(finalX - initialX) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Right to Left swipe performed");
-                    if (socket != null && socket.isConnected() && outData != null) {
-                        outData.println("SwipeRight");
-                    }
-                }
-
-                if (initialY < finalY && Math.abs(finalY - initialY) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Up to Down swipe performed");
-                    if (socket != null && socket.isConnected() && outData != null) {
-                        outData.println("SwipeUp");
-                    }
-                }
-
-                if (initialY > finalY && Math.abs(finalY - initialY) > threshold) {
-                    swipe = true;
-                    Log.d(TOUCH_TAG, "Down to Up swipe performed");
-                    if (socket != null && socket.isConnected() && outData != null) {
-                        outData.println("SwipeDown");
-                    }
-                }
-
-                // send click data only if no swipe was detected
-                if (!swipe && socket != null && socket.isConnected() && outData != null) {
-                    outData.println("MouseClick:" + finalX + ":" + finalY);
-                    Log.i("OutStream", "Sendet Daten " + finalX + " " + finalY);
-                }
 
                 break;
 
@@ -319,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
     public void onDestroy() {
         super.onDestroy();
         if(socket != null && socket.isConnected()) {
-            Log.i("Disconnect", "Disconnected from server!");
+            Log.i(CONNECTION_TAG, "Disconnected from server!");
             try {
                 outData.println("exit"); //tell server to exit
                 Thread.sleep(1000);
@@ -327,7 +397,7 @@ public class MainActivity extends AppCompatActivity {
                 socket.shutdownOutput();
                 socket.close(); //close socket
             } catch (IOException e) {
-                Log.e("remotedroid", "Error in closing socket", e);
+                Log.e(CONNECTION_TAG, "Error in closing socket", e);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -343,32 +413,29 @@ public class MainActivity extends AppCompatActivity {
 
                 // try thread
                 MessageThread client_message = new MessageThread();
-                Log.i("MessageThread", "doInBackground");
                 client_message.start();
 
                 while(socket.isConnected()) {
                     bMap = BitmapFactory.decodeStream(socket.getInputStream());
-                    Log.d("ImageData", "Receive image data.");
+                    Log.v(IMAGE_DATA_TAG, "Receive image data.");
 
+                    // load new image data to create continuous stream
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            Log.d("ImageData", "Display image data.");
-                            // https://github.com/chrisbanes/PhotoView/issues/505
-                            Matrix matrix = new Matrix();
-                            image.getAttacher().getSuppMatrix(matrix);
+                            Log.v(IMAGE_DATA_TAG, "Display image data.");
+//                          // PHOTOVIEW: Disables zoom reset after loading new image
+//                          // https://github.com/chrisbanes/PhotoView/issues/505
+//                          Matrix matrix = new Matrix();
+//                          image.getAttacher().getSuppMatrix(matrix);
                             image.setImageBitmap(bMap);
-                            image.getAttacher().setDisplayMatrix(matrix);
+//                          image.getAttacher().setDisplayMatrix(matrix);
                         }
                     });
-
-                    Log.v("InputData", socket.getInputStream().toString());
                 }
 
-                Log.i("Socket", "Closing socket.");
-
             } catch (IOException e) {
-                Log.e("Connection", "Error while connecting", e);
+                Log.e(CONNECTION_TAG, "Error while connecting", e);
                 result = false;
             }
             return result;
@@ -377,40 +444,25 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Boolean result) {
             Log.d("OnPostExecute", "Called.");
-            isConnected = result;
-            //Toast.makeText(context, isConnected ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
-            /*try {
-                if(socket.isConnected()) {
-                    outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
-                            .getOutputStream())), true); //create output stream to send data to server
-                    //outData.println("Connected to Server.");
-                }
-            }catch (IOException e){
-                Log.e("remotedroid", "Error while creating OutWriter", e);
-                Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
-            }*/
         }
     }
 
     class MessageThread extends Thread {
         @Override
         public void run(){
-            Log.i("MessageThread", "prepare");
             Looper.prepare();
-            Log.i("MessageThread", "prepared");
-
             Toast.makeText(context, socket.isConnected() ? "Connected to server!":"Error while connecting",Toast.LENGTH_LONG).show();
-            Log.i("MessageThread", "Called.");
 
+            // creates streams for client-server-communication
             try {
                 if(socket != null && socket.isConnected()) {
                     outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
-                            .getOutputStream())), true); //create output stream to send data to server
+                            .getOutputStream())), true); // create output stream to send data to server
                     outData.println("Connected to Server.");
-                    Log.i("OutData", "Data " + outData.toString());
+                    Log.i(SERVER_COMMUNICTION_TAG, "Data " + outData.toString());
                 }
             } catch (IOException e){
-                Log.e("OutWriter", "Error while creating OutWriter", e);
+                Log.e(SERVER_COMMUNICTION_TAG, "Error while creating OutWriter", e);
                 Toast.makeText(context,"Error while connecting",Toast.LENGTH_LONG).show();
             }
             Looper.loop();
@@ -418,14 +470,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Pinch zoom: https://medium.com/quick-code/pinch-to-zoom-with-multi-touch-gestures-in-android-d6392e4bf52d
+     * Pinch zoom
+     * https://medium.com/quick-code/pinch-to-zoom-with-multi-touch-gestures-in-android-d6392e4bf52d
      */
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
         public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
             mScaleFactor *= scaleGestureDetector.getScaleFactor();
-            mScaleFactor = Math.max(1.0f,
-                    Math.min(mScaleFactor, 10.0f));
+            mScaleFactor = Math.max(mMinZoomFactor,
+                    Math.min(mScaleFactor, mMaxZoomFactor));
             image.setScaleX(mScaleFactor);
             image.setScaleY(mScaleFactor);
             return true;
