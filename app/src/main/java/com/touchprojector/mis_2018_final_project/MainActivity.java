@@ -173,35 +173,18 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
-                connectPhoneTask.execute(server_ip); // try to connect to server in another thread
+                if (server_ip != null)
+                    connectPhoneTask.execute(server_ip); // try to connect to server in another thread
             }
         });
 
         scanBtn = (Button) findViewById(R.id.qr_scan);
         scanBtn.setOnClickListener( new View.OnClickListener() {
 
+            // get server ip and server port from qr code
             @Override
             public void onClick(View v) {
-                if (socket != null && socket.isConnected()) {
-                    try {
-                        Log.i(CONNECTION_TAG, "Disconnected from server!");
-                        outData.println("exit"); // tell server to exit
-                        Thread.sleep(1000);
-                        socket.shutdownInput();
-                        socket.shutdownOutput();
-                        socket.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
                 qrScan.initiateScan();
-                Log.i(SERVER_COMMUNICTION_TAG, "SERVERIP: " + server_ip);
-                Log.i(SERVER_COMMUNICTION_TAG, "SERVERIP: " + server_port);
-                ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
-                if (server_ip != null)
-                    connectPhoneTask.execute(server_ip); // try to connect to server in another thread
             }
         });
 
