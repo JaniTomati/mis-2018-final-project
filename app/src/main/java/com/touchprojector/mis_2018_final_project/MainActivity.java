@@ -74,8 +74,8 @@ public class MainActivity extends AppCompatActivity {
     private float mMaxZoomFactor = 5.0f;
 
     private IntentIntegrator qrScan;
-    private String server_ip = "192.168.0.32";
-    private int server_port = 8090;
+    private String server_ip;
+    private int server_port;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                 if (socket != null && socket.isConnected()) {
                     Log.i(CONNECTION_TAG, "Disconnected from server!");
                     try {
-                        outData.println("exit"); //tell server to exit
+                        outData.println("exit"); // tell server to exit
                         Thread.sleep(1000);
                         socket.shutdownInput();
                         socket.shutdownOutput();
@@ -183,8 +183,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (socket != null && socket.isConnected()) {
-                    Log.i(CONNECTION_TAG, "Disconnected from server!");
                     try {
+                        Log.i(CONNECTION_TAG, "Disconnected from server!");
                         outData.println("exit"); // tell server to exit
                         Thread.sleep(1000);
                         socket.shutdownInput();
@@ -197,9 +197,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 qrScan.initiateScan();
+                Log.i(SERVER_COMMUNICTION_TAG, "SERVERIP: " + server_ip);
+                Log.i(SERVER_COMMUNICTION_TAG, "SERVERIP: " + server_port);
                 ConnectPhoneTask connectPhoneTask = new ConnectPhoneTask();
                 if (server_ip != null)
-                    connectPhoneTask.execute(server_ip); //try to connect to server in another thread
+                    connectPhoneTask.execute(server_ip); // try to connect to server in another thread
             }
         });
 
@@ -272,6 +274,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     // converting the data to json
                     JSONObject obj = new JSONObject(result.getContents()); // read server_ip and server_port from scanned json
+                    Log.v(SERVER_COMMUNICTION_TAG, obj.toString());
                     Log.i(SERVER_COMMUNICTION_TAG, "ServerIP: " + obj.getString("server_ip"));
                     Log.i(SERVER_COMMUNICTION_TAG, "ServerPort: " +obj.getString("server_port"));
                     server_ip = obj.getString("server_ip");
@@ -459,7 +462,6 @@ public class MainActivity extends AppCompatActivity {
                     outData = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket
                             .getOutputStream())), true); // create output stream to send data to server
                     outData.println("Connected to Server.");
-                    Log.i(SERVER_COMMUNICTION_TAG, "Data " + outData.toString());
                 }
             } catch (IOException e){
                 Log.e(SERVER_COMMUNICTION_TAG, "Error while creating OutWriter", e);
